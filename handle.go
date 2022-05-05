@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-redis/redis"
+	"github.com/google/uuid"
+	"log"
 	"net/http"
 	"os"
 	"time"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 )
 
 
@@ -30,6 +33,9 @@ type GameScore struct {
 
 var redisHost = os.Getenv("REDIS_HOST") // This should include the port which is most of the time 6379
 var redisPassword = os.Getenv("REDIS_PASSWORD")
+var gameEventingEnabled = os.Getenv("GAME_EVENTING_ENABLED")
+var sink = os.Getenv("GAME_EVENTING_BROKER_URI")
+var cloudEventsEnabled bool = false
 
 // Handle an HTTP Request.
 func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
@@ -84,6 +90,42 @@ func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if cloudEventsEnabled {
+		emitCloudEvent(scoreJson)
+	}
+
 	res.Header().Set("Content-Type", "application/json")
 	fmt.Fprintln(res, string(scoreJson))
+}
+
+func emitCloudEvent(gs []byte) error {
+	c, err := cloudevents.NewClientHTTP()
+	if err != nil {
+		log.Fatalf("failed to create client, %v", err)
+	}
+
+	// Create an Event.
+	event := cloudevents.NewEvent()
+	newUUID, _ := uuid.NewUUID()
+	event.SetID(newUUID.String())
+	event.SetTime(time.Now())
+	event.SetSource("kubeconeu-question-2")
+	event.SetType("GameScoreEvent")
+	event.SetData(cloudevents.ApplicationJSON, gs)
+
+	log.Printf("Emitting an Event: %s to SINK: %s", event, sink)
+
+	// Set a target.
+	ctx := cloudevents.ContextWithTarget(context.Background(), sink)
+
+	// Send that Event.
+	result := c.Send(ctx, event)
+	if result != nil {
+		log.Printf("Resutl: %s", result)
+		if cloudevents.IsUndelivered(result) {
+			log.Printf("failed to send, %v", result)
+			return result
+		}
+	}
+	return nil
 }
