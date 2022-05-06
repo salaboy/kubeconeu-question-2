@@ -15,6 +15,7 @@ import (
 
 
 type Answers struct {
+	Player string `json:"player"`
 	SessionId string `json:"sessionId"`
 	OptionA bool `json:"optionA"`
 	OptionB bool `json:"optionB"`
@@ -24,6 +25,7 @@ type Answers struct {
 }
 
 type GameScore struct {
+	Player string
 	SessionId string
 	Time      time.Time
 	Level     string
@@ -47,6 +49,10 @@ func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 
 	points := 0
 	var answers Answers
+
+	if gameEventingEnabled != "" && gameEventingEnabled != "false"{
+		cloudEventsEnabled = true
+	}
 
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
@@ -72,6 +78,7 @@ func Handle(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	points += answers.RemainingTime
 
 	score := GameScore {
+		Player:  answers.Player,
 		SessionId: answers.SessionId,
 		Level: "kubeconeu-question-2",
 		LevelScore: points,
