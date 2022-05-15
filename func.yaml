@@ -6,10 +6,7 @@ registry: ""
 image: docker.io/salaboy/kubeconeu-question-2:latest
 imageDigest: sha256:56dabcfaa433f2bf217b805514822119f4423740da426fc3786c14d5781a6d73
 build: local
-git:
-  url: null
-  revision: null
-  contextdir: null
+git: {}
 builder: gcr.io/paketo-buildpacks/builder:base
 builders:
   base: gcr.io/paketo-buildpacks/builder:base
